@@ -2,16 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { MagnifyingGlass } from "@phosphor-icons/react";
-import { categories, products } from "@/data/products";
+import { categories, type Product } from "@/data/products";
 import { ProductCard } from "./product-card";
 
-export function Catalog() {
+export function Catalog({ products }: { products: Product[] }) {
   const [category, setCategory] = useState("Todos");
   const [query, setQuery] = useState("");
   const visible = useMemo(() => products.filter((product) =>
     (category === "Todos" || product.category === category) &&
     product.name.toLowerCase().includes(query.toLowerCase())
-  ), [category, query]);
+  ), [category, query, products]);
 
   return <section id="catalogo" className="catalog-section section-shell">
     <div className="section-heading">

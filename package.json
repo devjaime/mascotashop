@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@phosphor-icons/react": "latest",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.110.2",
     "mercadopago": "latest",
     "next": "latest",
     "react": "latest",

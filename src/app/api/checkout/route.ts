@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { z } from "zod";
-import { getProduct } from "@/data/products";
+import { getProductBySlug } from "@/lib/products";
 
 export const runtime = "nodejs";
 
@@ -26,8 +26,8 @@ export async function POST(request: Request) {
     const parsed = checkoutSchema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "El carrito no es válido." }, { status: 400 });
 
-    const items = parsed.data.items.map(({ productId, quantity }) => {
-      const product = getProduct(productId);
+    const items = await Promise.all(parsed.data.items.map(async ({ productId, quantity }) => {
+      const product = await getProductBySlug(productId);
       if (!product || product.stock < quantity) throw new Error("Uno de los productos ya no tiene stock suficiente.");
       return {
         id: product.id,
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         currency_id: "CLP",
         unit_price: product.price,
       };
-    });
+    }));
 
     const siteUrl = getSiteUrl(request);
     const client = new MercadoPagoConfig({ accessToken: token, options: { timeout: 8000 } });

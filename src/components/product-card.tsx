@@ -15,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
       <Link href={`/productos/${product.id}`}><h3>{product.name}</h3></Link>
       <div className="product-bottom">
         <strong>{formatPrice(product.price)}</strong>
-        <AddToCart productId={product.id} disabled={product.stock === 0} />
+        <AddToCart product={product} disabled={product.stock === 0} />
       </div>
     </div>
   </article>;

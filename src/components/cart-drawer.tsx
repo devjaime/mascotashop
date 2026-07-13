@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useState } from "react";
 import { Minus, Plus, Trash, WhatsappLogo, X } from "@phosphor-icons/react";
-import { getProduct } from "@/data/products";
 import { formatPrice } from "@/lib/format";
 import { siteConfig } from "@/lib/site";
 import { useCart } from "./cart-provider";
@@ -12,15 +11,11 @@ export function CartDrawer() {
   const { items, total, isOpen, setIsOpen, updateItem } = useCart();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const detailed = items.flatMap((item) => {
-    const product = getProduct(item.productId);
-    return product ? [{ ...item, product }] : [];
-  });
 
   const orderMessage = [
     "¡Hola MascotasShop! 🐾 Quiero hacer este pedido:",
     "",
-    ...detailed.map(({ product, quantity }) => `• ${quantity}x ${product.name} — ${formatPrice(product.price * quantity)}`),
+    ...items.map((item) => `• ${item.quantity}x ${item.name} — ${formatPrice(item.price * item.quantity)}`),
     "",
     `Total productos: ${formatPrice(total)}`,
     "¿Me ayudan a coordinar el despacho?",
@@ -33,7 +28,7 @@ export function CartDrawer() {
       const response = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ productId, quantity })) }),
       });
       const data = await response.json();
       if (!response.ok || !data.checkoutUrl) throw new Error(data.error ?? "No pudimos iniciar el pago");
@@ -49,15 +44,15 @@ export function CartDrawer() {
     <aside className={`cart-drawer ${isOpen ? "open" : ""}`} aria-hidden={!isOpen}>
       <div className="drawer-header"><div><span>Tu selección</span><h2>Carrito</h2></div><button onClick={() => setIsOpen(false)} aria-label="Cerrar"><X /></button></div>
       <div className="drawer-items">
-        {detailed.length === 0 ? <div className="cart-empty"><span>🐾</span><h3>Tu carrito está esperando</h3><p>Agrega productos y vuelve cuando quieras.</p></div> : detailed.map(({ product, quantity }) => <div className="cart-item" key={product.id}>
-          <Image src={product.images[0]} alt="" width={82} height={82} />
-          <div><h3>{product.name}</h3><strong>{formatPrice(product.price)}</strong><div className="quantity-control">
-            <button onClick={() => updateItem(product.id, quantity - 1)} aria-label="Quitar uno">{quantity === 1 ? <Trash /> : <Minus />}</button>
-            <span>{quantity}</span><button onClick={() => updateItem(product.id, quantity + 1)} aria-label="Agregar uno" disabled={quantity >= product.stock}><Plus /></button>
+        {items.length === 0 ? <div className="cart-empty"><span>🐾</span><h3>Tu carrito está esperando</h3><p>Agrega productos y vuelve cuando quieras.</p></div> : items.map((item) => <div className="cart-item" key={item.productId}>
+          <Image src={item.image} alt="" width={82} height={82} />
+          <div><h3>{item.name}</h3><strong>{formatPrice(item.price)}</strong><div className="quantity-control">
+            <button onClick={() => updateItem(item.productId, item.quantity - 1)} aria-label="Quitar uno">{item.quantity === 1 ? <Trash /> : <Minus />}</button>
+            <span>{item.quantity}</span><button onClick={() => updateItem(item.productId, item.quantity + 1)} aria-label="Agregar uno" disabled={item.quantity >= item.stock}><Plus /></button>
           </div></div>
         </div>)}
       </div>
-      {detailed.length > 0 ? <div className="drawer-footer">
+      {items.length > 0 ? <div className="drawer-footer">
         <div className="cart-total"><span>Total productos</span><strong>{formatPrice(total)}</strong></div>
         <p>El despacho se coordina después de tu compra.</p>
         {error ? <div className="checkout-error">{error}</div> : null}

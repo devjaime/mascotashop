@@ -11,6 +11,8 @@ Ecommerce de accesorios para mascotas construido con Next.js, TypeScript y Check
 - Mercado Pago Checkout Pro en CLP mediante una ruta segura del servidor.
 - Retornos para pagos aprobados, pendientes y fallidos.
 - Diseño responsive y optimización de imágenes de Next.js.
+- Panel privado `/admin` para crear, editar, dar de baja y reactivar productos.
+- Actualización rápida de stock e imágenes almacenadas en Supabase Storage.
 
 ## Desarrollo local
 
@@ -34,8 +36,33 @@ Completa estas variables en `.env.local` y en Vercel (Project Settings → Envir
 | `NEXT_PUBLIC_INSTAGRAM_USERNAME` | Usuario de Instagram, sin `@` |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Número con código de país, sólo dígitos, por ejemplo `56912345678` |
 | `MERCADOPAGO_ACCESS_TOKEN` | Access Token privado de la aplicación de Mercado Pago |
+| `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública `anon` del proyecto Supabase |
 
 El `MERCADOPAGO_ACCESS_TOKEN` nunca debe usar el prefijo `NEXT_PUBLIC_` ni subirse al repositorio.
+
+## Activar el catálogo administrable
+
+1. Crea un proyecto en Supabase y copia sus variables públicas al entorno.
+2. Vincula el proyecto y aplica la migración:
+
+```bash
+npx supabase login
+npx supabase link --project-ref TU_PROJECT_REF
+npx supabase db push
+```
+
+3. En Supabase Authentication crea el usuario administrador con correo y contraseña.
+4. Copia su UUID y regístralo como administrador desde el SQL Editor:
+
+```sql
+insert into public.admin_users (user_id)
+values ('UUID_DEL_USUARIO');
+```
+
+5. Ingresa en `/admin`. Si la tabla está vacía, usa **Importar catálogo inicial** para cargar los 35 productos entregados.
+
+La migración activa Row Level Security: visitantes sólo pueden leer productos activos y únicamente los UUID registrados en `admin_users` pueden modificar catálogo o imágenes. Dar de baja es reversible y conserva la información del producto.
 
 ## Mercado Pago Chile
 
