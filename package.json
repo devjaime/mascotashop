@@ -28,5 +28,10 @@
     "typescript": "^5.9.3",
     "vitest": "latest"
   },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.10"
+    }
+  },
   "packageManager": "pnpm@10.12.1"
 }
