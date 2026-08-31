@@ -1,16 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
 import { Minus, Plus, Trash, WhatsappLogo, X } from "@phosphor-icons/react";
 import { formatPrice } from "@/lib/format";
-import { siteConfig } from "@/lib/site";
 import { useCart } from "./cart-provider";
 
-export function CartDrawer() {
+export function CartDrawer({ whatsapp }: { whatsapp: string }) {
   const { items, total, isOpen, setIsOpen, updateItem } = useCart();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   const orderMessage = [
     "¡Hola MascotasShop! 🐾 Quiero hacer este pedido:",
@@ -20,24 +16,6 @@ export function CartDrawer() {
     `Total productos: ${formatPrice(total)}`,
     "¿Me ayudan a coordinar el despacho?",
   ].join("\n");
-
-  const pay = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: items.map(({ productId, quantity }) => ({ productId, quantity })) }),
-      });
-      const data = await response.json();
-      if (!response.ok || !data.checkoutUrl) throw new Error(data.error ?? "No pudimos iniciar el pago");
-      window.location.href = data.checkoutUrl;
-    } catch (checkoutError) {
-      setError(checkoutError instanceof Error ? checkoutError.message : "Ocurrió un error inesperado");
-      setLoading(false);
-    }
-  };
 
   return <>
     <button className={`drawer-overlay ${isOpen ? "visible" : ""}`} aria-label="Cerrar carrito" onClick={() => setIsOpen(false)} />
@@ -55,9 +33,8 @@ export function CartDrawer() {
       {items.length > 0 ? <div className="drawer-footer">
         <div className="cart-total"><span>Total productos</span><strong>{formatPrice(total)}</strong></div>
         <p>El despacho se coordina después de tu compra.</p>
-        {error ? <div className="checkout-error">{error}</div> : null}
-        <button className="mercadopago-button" disabled={loading} onClick={pay}>{loading ? "Conectando…" : "Pagar con Mercado Pago"}</button>
-        <a className="whatsapp-button" href={`https://wa.me/${siteConfig.whatsapp}?text=${encodeURIComponent(orderMessage)}`} target="_blank" rel="noreferrer"><WhatsappLogo weight="fill" /> Pedir por WhatsApp</a>
+        <a className="mercadopago-button" href="/checkout" onClick={() => setIsOpen(false)}>Continuar al pago</a>
+        <a className="whatsapp-button" href={`https://wa.me/${whatsapp}?text=${encodeURIComponent(orderMessage)}`} target="_blank" rel="noreferrer"><WhatsappLogo weight="fill" /> Pedir por WhatsApp</a>
       </div> : null}
     </aside>
   </>;

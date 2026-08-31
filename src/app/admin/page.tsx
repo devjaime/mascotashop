@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Archive, ArrowSquareOut, Package, PencilSimple, Plus, SignOut, Warning } from "@phosphor-icons/react/dist/ssr";
+import { Archive, Package, PencilSimple, Plus, Warning } from "@phosphor-icons/react/dist/ssr";
 import { redirect } from "next/navigation";
 import { formatPrice } from "@/lib/format";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { createClient } from "@/lib/supabase/server";
 import { importInitialCatalog, logout, toggleProduct, updateStock } from "./actions";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 export default async function AdminPage() {
   if (!isSupabaseConfigured()) return <main className="admin-shell"><div className="admin-setup"><Warning weight="fill" /><h1>Falta configurar Supabase</h1><p>Agrega las variables indicadas en <code>.env.example</code> y ejecuta la migración antes de usar el panel.</p></div></main>;
@@ -20,7 +21,7 @@ export default async function AdminPage() {
   const lowStockCount = products.filter((item) => item.active && item.stock <= 2).length;
 
   return <main className="admin-shell">
-    <aside className="admin-sidebar"><Link href="/admin" className="admin-brand">🐾 Mascotas<span>Shop</span></Link><nav><Link href="/admin" className="active"><Package /> Productos</Link><Link href="/" target="_blank"><ArrowSquareOut /> Ver tienda</Link></nav><form action={logout}><button><SignOut /> Cerrar sesión</button></form></aside>
+    <AdminNav active="products" />
     <section className="admin-content">
       <header><div><span className="eyebrow">Panel de gestión</span><h1>Productos</h1><p>Actualiza stock, publica novedades o retira productos de la tienda.</p></div><Link href="/admin/productos/nuevo" className="admin-primary"><Plus /> Nuevo producto</Link></header>
       <div className="admin-stats"><div><small>Productos activos</small><strong>{activeCount}</strong></div><div><small>Stock bajo o agotado</small><strong>{lowStockCount}</strong></div><div><small>Total registrados</small><strong>{products.length}</strong></div></div>

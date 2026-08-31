@@ -107,3 +107,21 @@ export async function importInitialCatalog() {
   revalidatePath("/", "layout");
   revalidatePath("/admin");
 }
+
+export async function updateStoreSettings(formData: FormData) {
+  const supabase = await requireAdmin();
+  const rate = Number(formData.get("flat_shipping_rate") || 0);
+  const thresholdValue = String(formData.get("free_shipping_threshold") || "");
+  const mode = String(formData.get("shipping_mode"));
+  if (!["coordinate", "flat_rate", "shipit"].includes(mode) || !Number.isInteger(rate) || rate < 0) throw new Error("Configuración de envío inválida.");
+  const { error } = await supabase.from("store_settings").update({ contact_email:String(formData.get("contact_email")||"").trim(), whatsapp:String(formData.get("whatsapp")||"").replace(/\D/g,""), instagram:String(formData.get("instagram")||"").replace(/^@/,""), facebook:String(formData.get("facebook")||"").trim(), tiktok:String(formData.get("tiktok")||"").replace(/^@/,""), shipping_mode:mode, flat_shipping_rate:rate, free_shipping_threshold:thresholdValue?Number(thresholdValue):null, pickup_enabled:formData.get("pickup_enabled")==="on", pickup_instructions:String(formData.get("pickup_instructions")||"").trim(), shipping_notice:String(formData.get("shipping_notice")||"").trim() }).eq("id",true);
+  if(error) throw new Error(error.message); revalidatePath("/","layout"); revalidatePath("/admin/configuracion");
+}
+
+export async function updateOrder(formData: FormData) {
+  const supabase = await requireAdmin(); const id=String(formData.get("id")); const status=String(formData.get("status"));
+  const allowed=["paid","preparing","shipped","delivered","cancelled"]; if(!allowed.includes(status)) throw new Error("Estado inválido.");
+  const fulfillment_status=status==="paid"?"unfulfilled":status==="cancelled"?"cancelled":status;
+  const {error}=await supabase.from("orders").update({status,fulfillment_status,tracking_code:String(formData.get("tracking_code")||"").trim(),tracking_url:String(formData.get("tracking_url")||"").trim()}).eq("id",id);
+  if(error) throw new Error(error.message); revalidatePath("/admin/pedidos");
+}

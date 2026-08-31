@@ -13,6 +13,9 @@ Ecommerce de accesorios para mascotas construido con Next.js, TypeScript y Check
 - Diseño responsive y optimización de imágenes de Next.js.
 - Panel privado `/admin` para crear, editar, dar de baja y reactivar productos.
 - Actualización rápida de stock e imágenes almacenadas en Supabase Storage.
+- Registro de pedidos, datos de entrega, estado de pago y seguimiento de despacho.
+- Mantenedor administrativo de redes sociales, correo y tarifas de envío.
+- Webhook seguro para confirmar pagos y descontar stock una sola vez.
 
 ## Desarrollo local
 
@@ -38,6 +41,8 @@ Completa estas variables en `.env.local` y en Vercel (Project Settings → Envir
 | `MERCADOPAGO_ACCESS_TOKEN` | Access Token privado de la aplicación de Mercado Pago |
 | `NEXT_PUBLIC_SUPABASE_URL` | URL del proyecto Supabase |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave pública `anon` del proyecto Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clave privada para registrar pedidos y confirmar pagos |
+| `MERCADOPAGO_WEBHOOK_SECRET` | Firma privada de Webhooks de Mercado Pago |
 
 El `MERCADOPAGO_ACCESS_TOKEN` nunca debe usar el prefijo `NEXT_PUBLIC_` ni subirse al repositorio.
 

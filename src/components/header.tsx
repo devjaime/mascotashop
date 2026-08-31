@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { InstagramLogo, PawPrint, ShoppingBag } from "@phosphor-icons/react";
 import { useCart } from "./cart-provider";
-import { instagramUrl } from "@/lib/site";
+import type { StoreSettings } from "@/lib/store-settings";
 
-export function Header() {
+export function Header({ settings }: { settings: StoreSettings }) {
   const { count, setIsOpen } = useCart();
   return <>
-    <div className="announcement">Despachos a coordinar · Paga seguro con Mercado Pago</div>
+    <div className="announcement">{settings.shipping_notice} · Paga seguro con Mercado Pago</div>
     <header className="site-header">
       <Link href="/" className="brand" aria-label="MascotasShop, inicio">
         <span className="brand-mark"><PawPrint weight="fill" /></span>
@@ -17,7 +17,7 @@ export function Header() {
       <nav aria-label="Navegación principal">
         <Link href="/#catalogo">Productos</Link>
         <Link href="/#nosotros">Nosotros</Link>
-        <a href={instagramUrl} target="_blank" rel="noreferrer" aria-label="Instagram"><InstagramLogo /></a>
+        <a href={`https://instagram.com/${settings.instagram}`} target="_blank" rel="noreferrer" aria-label="Instagram"><InstagramLogo /></a>
         <button className="cart-trigger" onClick={() => setIsOpen(true)} aria-label={`Abrir carrito con ${count} productos`}>
           <ShoppingBag />
           {count > 0 ? <span>{count}</span> : null}

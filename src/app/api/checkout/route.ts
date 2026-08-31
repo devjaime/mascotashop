@@ -1,64 +1,9 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { z } from "zod";
-import { getProductBySlug } from "@/lib/products";
-
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getStoreSettings, shippingCost } from "@/lib/store-settings";
 export const runtime = "nodejs";
-
-const checkoutSchema = z.object({
-  items: z.array(z.object({
-    productId: z.string().min(1),
-    quantity: z.number().int().min(1).max(20),
-  })).min(1).max(30),
-});
-
-const getSiteUrl = (request: Request) => {
-  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
-  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
-  return new URL(request.url).origin;
-};
-
-export async function POST(request: Request) {
-  try {
-    const token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-    if (!token) return NextResponse.json({ error: "Mercado Pago aún no está configurado. Puedes completar el pedido por WhatsApp." }, { status: 503 });
-
-    const parsed = checkoutSchema.safeParse(await request.json());
-    if (!parsed.success) return NextResponse.json({ error: "El carrito no es válido." }, { status: 400 });
-
-    const items = await Promise.all(parsed.data.items.map(async ({ productId, quantity }) => {
-      const product = await getProductBySlug(productId);
-      if (!product || product.stock < quantity) throw new Error("Uno de los productos ya no tiene stock suficiente.");
-      return {
-        id: product.id,
-        title: product.name,
-        description: product.description,
-        quantity,
-        currency_id: "CLP",
-        unit_price: product.price,
-      };
-    }));
-
-    const siteUrl = getSiteUrl(request);
-    const client = new MercadoPagoConfig({ accessToken: token, options: { timeout: 8000 } });
-    const preference = await new Preference(client).create({
-      body: {
-        items,
-        back_urls: {
-          success: `${siteUrl}/pago/exitoso`,
-          failure: `${siteUrl}/pago/fallido`,
-          pending: `${siteUrl}/pago/pendiente`,
-        },
-        auto_return: "approved",
-        external_reference: crypto.randomUUID(),
-        statement_descriptor: "MASCOTASSHOP",
-      },
-    });
-
-    if (!preference.init_point) throw new Error("Mercado Pago no devolvió una URL de pago.");
-    return NextResponse.json({ checkoutUrl: preference.init_point });
-  } catch (error) {
-    console.error("checkout_error", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "No pudimos iniciar el pago." }, { status: 500 });
-  }
-}
+const schema=z.object({items:z.array(z.object({productId:z.string().min(1),quantity:z.number().int().min(1).max(20)})).min(1).max(30),customer:z.object({name:z.string().min(3).max(120),email:z.string().email(),phone:z.string().min(8).max(30),region:z.string().min(2).max(80),commune:z.string().min(2).max(80),address:z.string().min(5).max(200),notes:z.string().max(500).optional().default("")})});
+const getUrl=(request:Request)=>(process.env.NEXT_PUBLIC_SITE_URL||(process.env.VERCEL_PROJECT_PRODUCTION_URL?`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`:new URL(request.url).origin)).replace(/\/$/,"");
+export async function POST(request:Request){try{const token=process.env.MERCADOPAGO_ACCESS_TOKEN;if(!token)return NextResponse.json({error:"Mercado Pago aún no está configurado."},{status:503});const parsed=schema.safeParse(await request.json());if(!parsed.success)return NextResponse.json({error:"Revisa los datos de contacto y entrega."},{status:400});const admin=createAdminClient();const slugs=parsed.data.items.map(i=>i.productId);const {data:products,error}=await admin.from("products").select("id,slug,name,description,price,stock,active").in("slug",slugs);if(error||!products||products.length!==slugs.length)throw new Error("No pudimos validar el catálogo.");const quantities=new Map(parsed.data.items.map(i=>[i.productId,i.quantity]));const rows=products.map(product=>{const quantity=quantities.get(product.slug)!;if(!product.active||product.stock<quantity)throw new Error(`${product.name} ya no tiene stock suficiente.`);return{product,quantity};});const subtotal=rows.reduce((sum,r)=>sum+r.product.price*r.quantity,0);const settings=await getStoreSettings();const freight=shippingCost(settings,subtotal);const total=subtotal+freight;const c=parsed.data.customer;const {data:order,error:orderError}=await admin.from("orders").insert({customer_name:c.name,customer_email:c.email,customer_phone:c.phone,shipping_address:c.address,shipping_commune:c.commune,shipping_region:c.region,customer_notes:c.notes,shipping_method:settings.shipping_mode,shipping_cost:freight,subtotal,total}).select("id").single();if(orderError||!order)throw new Error("No pudimos registrar el pedido.");const {error:itemsError}=await admin.from("order_items").insert(rows.map(r=>({order_id:order.id,product_id:r.product.id,product_slug:r.product.slug,product_name:r.product.name,unit_price:r.product.price,quantity:r.quantity})));if(itemsError)throw new Error("No pudimos registrar los productos del pedido.");const url=getUrl(request);const preference=await new Preference(new MercadoPagoConfig({accessToken:token,options:{timeout:8000}})).create({body:{items:[...rows.map(r=>({id:r.product.slug,title:r.product.name,description:r.product.description,quantity:r.quantity,currency_id:"CLP",unit_price:r.product.price})),...(freight?[{id:"shipping",title:"Despacho",quantity:1,currency_id:"CLP",unit_price:freight}]:[])],payer:{name:c.name,email:c.email,phone:{number:c.phone},address:{street_name:c.address}},back_urls:{success:`${url}/pago/exitoso`,failure:`${url}/pago/fallido`,pending:`${url}/pago/pendiente`},notification_url:`${url}/api/mercadopago/webhook`,auto_return:"approved",external_reference:order.id,statement_descriptor:"MASCOTASSHOP"}});if(!preference.init_point)throw new Error("Mercado Pago no devolvió una URL de pago.");await admin.from("orders").update({mp_preference_id:preference.id}).eq("id",order.id);return NextResponse.json({checkoutUrl:preference.init_point});}catch(error){console.error("checkout_error",error);return NextResponse.json({error:error instanceof Error?error.message:"No pudimos iniciar el pago."},{status:500});}}
