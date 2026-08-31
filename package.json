@@ -10,23 +10,23 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@phosphor-icons/react": "latest",
-    "@supabase/ssr": "^0.12.0",
-    "@supabase/supabase-js": "^2.110.2",
-    "mercadopago": "latest",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "zod": "latest"
+    "@phosphor-icons/react": "^2.1.10",
+    "@supabase/ssr": "^0.12.5",
+    "@supabase/supabase-js": "^2.112.4",
+    "mercadopago": "^3.6.0",
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
-    "eslint": "^9.39.0",
-    "eslint-config-next": "latest",
+    "@types/node": "^26.4.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "16.3.3",
     "typescript": "^5.9.3",
-    "vitest": "latest"
+    "vitest": "^4.1.11"
   },
   "packageManager": "pnpm@10.12.1"
 }
