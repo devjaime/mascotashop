@@ -13,7 +13,8 @@ export const getStoreSettings = cache(async (): Promise<StoreSettings> => {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return fallback;
   const supabase = await createClient();
   const { data, error } = await supabase.from("store_settings").select("contact_email,whatsapp,instagram,facebook,tiktok,shipping_mode,flat_shipping_rate,free_shipping_threshold,pickup_enabled,pickup_instructions,shipping_notice").eq("id", true).maybeSingle();
-  return error || !data ? fallback : data as StoreSettings;
+  if (error || !data) return fallback;
+  return { ...fallback, ...data, whatsapp: data.whatsapp || fallback.whatsapp, instagram: data.instagram || fallback.instagram } as StoreSettings;
 });
 
 export function shippingCost(settings: StoreSettings, subtotal: number) {
