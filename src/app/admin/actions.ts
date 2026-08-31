@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { products as initialProducts, type Category } from "@/data/products";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const categories: Category[] = ["Perros", "Gatos", "Pequeñas mascotas", "Higiene"];
@@ -124,4 +125,50 @@ export async function updateOrder(formData: FormData) {
   const fulfillment_status=status==="paid"?"unfulfilled":status==="cancelled"?"cancelled":status;
   const {error}=await supabase.from("orders").update({status,fulfillment_status,tracking_code:String(formData.get("tracking_code")||"").trim(),tracking_url:String(formData.get("tracking_url")||"").trim()}).eq("id",id);
   if(error) throw new Error(error.message); revalidatePath("/admin/pedidos");
+}
+
+function parseAdminPassword(value: string) {
+  if (value.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  return value;
+}
+
+async function requireAdminService() {
+  const supabase = await requireAdmin();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/admin/login");
+  return { user, admin: createAdminClient() };
+}
+
+export async function createAdminUser(formData: FormData) {
+  const { admin } = await requireAdminService();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = parseAdminPassword(String(formData.get("password") ?? ""));
+  if (!email.includes("@")) throw new Error("Correo inválido.");
+  const { data, error } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
+  if (error || !data.user) throw new Error(error?.message ?? "No se pudo crear el usuario.");
+  const { error: roleError } = await admin.from("admin_users").insert({ user_id: data.user.id });
+  if (roleError) throw new Error(roleError.message);
+  revalidatePath("/admin/usuarios");
+}
+
+export async function updateAdminPassword(formData: FormData) {
+  const { admin } = await requireAdminService();
+  const id = String(formData.get("id") ?? "");
+  const password = parseAdminPassword(String(formData.get("password") ?? ""));
+  const { error } = await admin.auth.admin.updateUserById(id, { password });
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/usuarios");
+}
+
+export async function deleteAdminUser(formData: FormData) {
+  const { user, admin } = await requireAdminService();
+  const id = String(formData.get("id") ?? "");
+  if (id === user.id) throw new Error("No puedes eliminar tu propio usuario.");
+  const { count } = await admin.from("admin_users").select("user_id", { count: "exact", head: true });
+  if ((count ?? 0) <= 1) throw new Error("Debe quedar al menos un administrador.");
+  const { error: roleError } = await admin.from("admin_users").delete().eq("user_id", id);
+  if (roleError) throw new Error(roleError.message);
+  const { error } = await admin.auth.admin.deleteUser(id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/admin/usuarios");
 }
